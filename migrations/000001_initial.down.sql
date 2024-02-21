@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS reserved_products;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS warehouse_products;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS warehouses;
+DROP EXTENSION IF EXISTS "uuid-ossp";
