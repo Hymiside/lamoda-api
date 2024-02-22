@@ -8,11 +8,11 @@ import (
 )
 
 type store interface {
-	ReservationProducts(_ context.Context, data models.ProductReservationRequest) error
-	Warehouses(_ context.Context) ([]models.Warehouse, error)
-	Products(_ context.Context) ([]models.Product, error)
-	WarehouseProducts(_ context.Context) ([]models.WarehouseProduct, error)
-	ReservedProducts(_ context.Context) ([]models.WarehouseProduct, error)
+	ReservationProducts(ctx context.Context, data models.ProductReservationRequest) error
+	Warehouses(ctx context.Context) ([]models.Warehouse, error)
+	Products(ctx context.Context) ([]models.Product, error)
+	WarehouseProducts(ctx context.Context) ([]models.WarehouseProduct, error)
+	ReservedProducts(ctx context.Context) ([]models.WarehouseProduct, error)
 }
 
 type Service struct {

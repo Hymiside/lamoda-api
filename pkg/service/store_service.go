@@ -31,8 +31,8 @@ func (s *storeService) distanceToWarehouse(lat1, lon1, lat2, lon2 float64) float
 	return distance
 }
 
-func (s *storeService) ReservationProducts(_ context.Context, data models.ProductReservationRequest) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+func (s *storeService) ReservationProducts(ctx context.Context, data models.ProductReservationRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
 	productIDs, err := s.repos.S.ProductsIDsByPartNumbers(ctx, data.PartNumbers)
@@ -78,8 +78,8 @@ func (s *storeService) ReservationProducts(_ context.Context, data models.Produc
 	return nil
 }
 
-func (s *storeService) Warehouses(_ context.Context) ([]models.Warehouse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+func (s *storeService) Warehouses(ctx context.Context) ([]models.Warehouse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
 	warehouses, err := s.repos.S.Warehouse(ctx)
@@ -89,8 +89,8 @@ func (s *storeService) Warehouses(_ context.Context) ([]models.Warehouse, error)
 	return warehouses, nil
 }
 
-func (s *storeService) Products(_ context.Context) ([]models.Product, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+func (s *storeService) Products(ctx context.Context) ([]models.Product, error) {
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
 	products, err := s.repos.S.Products(ctx)
@@ -100,8 +100,8 @@ func (s *storeService) Products(_ context.Context) ([]models.Product, error) {
 	return products, nil
 }
 
-func (s *storeService) WarehouseProducts(_ context.Context) ([]models.WarehouseProduct, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+func (s *storeService) WarehouseProducts(ctx context.Context) ([]models.WarehouseProduct, error) {
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
 	warehouseProducts, err := s.repos.S.WarehouseProducts(ctx)
@@ -111,8 +111,8 @@ func (s *storeService) WarehouseProducts(_ context.Context) ([]models.WarehouseP
 	return warehouseProducts, nil
 }
 
-func (s *storeService) ReservedProducts(_ context.Context) ([]models.WarehouseProduct, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+func (s *storeService) ReservedProducts(ctx context.Context) ([]models.WarehouseProduct, error) {
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
 	warehouseProducts, err := s.repos.S.ReservedProducts(ctx)
