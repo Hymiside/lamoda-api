@@ -3,18 +3,22 @@ package handler
 import (
 	"github.com/Hymiside/lamoda-api/pkg/service"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 )
 
 type Handler struct {
-	serv *service.Service
+	services *service.Service
+	validate *validator.Validate
 }
 
 func NewHandler(serv *service.Service) *Handler {
-	return &Handler{serv: serv}
+	return &Handler{
+		services: serv,
+		validate: validator.New(),
+	}
 }
 
 // products, warehoses, reservation-products, reserved-products, cancel-reservation-products, buy-reserved-products
-
 
 func (h *Handler) NewRoutes() *chi.Mux {
 	mux := chi.NewRouter()

@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE warehouses (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
-    available BOOLEAN NOT NULL DEFAULT TRUE,
+    available BOOLEAN NOT NULL DEFAULT FAlSE,
     lat DOUBLE PRECISION NOT NULL,
     lng DOUBLE PRECISION NOT NULL
 );
@@ -35,7 +35,7 @@ CREATE TABLE reserved_products (
     FOREIGN KEY (warehouse_product_id) REFERENCES warehouse_products(id) ON DELETE CASCADE
 );
 
-CREATE TABLE orders (
+CREATE TABLE shipped_products (
     id SERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL,
     warehouse_id INTEGER NOT NULL,
@@ -45,3 +45,13 @@ CREATE TABLE orders (
     FOREIGN KEY (product_id) REFERENCES products(id),
     FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
 );
+
+INSERT INTO warehouses (title, available, lat, lng) VALUES 
+    ('Warehouse G', true, 52.5200, 13.4050),
+    ('Warehouse H', true, 55.7558, 37.6176),
+    ('Warehouse I', false, 35.6895, 139.6917);
+
+-- Пример заполнения таблицы products
+INSERT INTO products (title, part_number, dimensions) VALUES 
+    ('Product 5', 'P97531', '{"width": 10, "height": 10, "depth": 10}'),
+    ('Product 6', 'P13579', '{"width": 15, "height": 20, "depth": 12}');

@@ -7,12 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/joho/godotenv"
+
 	"github.com/Hymiside/lamoda-api/pkg/handler"
 	"github.com/Hymiside/lamoda-api/pkg/models"
 	"github.com/Hymiside/lamoda-api/pkg/repository"
 	"github.com/Hymiside/lamoda-api/pkg/server"
 	"github.com/Hymiside/lamoda-api/pkg/service"
-	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 		Password: os.Getenv("POSTGRES_PASSWORD"),
 		Host:     os.Getenv("POSTGRES_HOST"),
 		Port:     os.Getenv("POSTGRES_PORT"),
-		Name:     os.Getenv("POSTGRES_NAME"),
+		Name:     os.Getenv("POSTGRES_DATABASE"),
 	})
 	if err != nil {
 		log.Panicf("error to connect postgres: %v", err)

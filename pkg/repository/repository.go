@@ -2,21 +2,26 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
-	"database/sql"
-
 	"github.com/Hymiside/lamoda-api/pkg/models"
+	_ "github.com/lib/pq"
 )
 
-type store interface{}
+type store interface{
+	ProductsIDsByPartNumbers(ctx context.Context, partNumbers []string) ([]int, error)
+	WarehouseIDsByProductID(ctx context.Context, productIDs []int) ([]int, error)
+	WarehousesByIDs(ctx context.Context, warehouseIDs []int) ([]models.Warehouse, error)
+	SetProductsToReserved(ctx context.Context, warehouseID int, productIDs []int) error
+}
 
 type Repository struct {
-	s store
+	S store
 }
 
 func NewRepository(db *sql.DB) *Repository {
-	return &Repository{s: newStoreRepository(db)}
+	return &Repository{S: newStoreRepository(db)}
 }
 
 func NewPostgresDB(ctx context.Context, c models.ConfigPostgres) (*sql.DB, error) {

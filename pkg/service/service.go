@@ -1,13 +1,20 @@
 package service
 
-import "github.com/Hymiside/lamoda-api/pkg/repository"
+import (
+	"context"
 
-type store interface {}
+	"github.com/Hymiside/lamoda-api/pkg/models"
+	"github.com/Hymiside/lamoda-api/pkg/repository"
+)
+
+type store interface {
+	ReservationProducts(_ context.Context, data models.ProductReservationRequest) error
+}
 
 type Service struct {
-	s store
+	S store
 }
 
 func NewService(repos *repository.Repository) *Service {
-	return &Service{s: newStoreService(repos)}
+	return &Service{S: newStoreService(repos)}
 }
