@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type ConfigPostgres struct {
 	User     string
 	Password string
@@ -21,8 +23,28 @@ type ProductReservationRequest struct {
 }
 
 type Warehouse struct {
-	ID        int
-	Title     string
-	Lat       float64
-	Long      float64
+	ID        int `db:"id" json:"id"`
+	Title     string `db:"title" json:"title"`
+	Lat       float64 `db:"lat" json:"lat"`
+	Long      float64 `db:"lng" json:"long"`
+}
+
+type Product struct {
+	ID          int `db:"id" json:"id"` 
+	PartNumber  string `db:"part_number" json:"part_number"`
+	Title       string `db:"title" json:"title"`
+	Dimensions  *map[string]int `db:"dimensions" json:"dimensions"`
+}
+
+type WarehouseProduct struct {
+	Product Product `json:"product"`
+	Warehouse Warehouse `json:"warehouse"`
+	Quantity int `json:"quantity"`
+}
+
+type ReservedProducts struct {
+	Product Product `json:"product"`
+	Warehouse Warehouse `json:"warehouse"`
+	Quantity int `json:"quantity"`
+	CreatedAt time.Time `json:"created_at"`
 }

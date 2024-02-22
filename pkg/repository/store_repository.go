@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/Hymiside/lamoda-api/pkg/models"
@@ -119,4 +120,114 @@ func (s *storeRepository) SetProductsToReserved(ctx context.Context, warehouseID
 		return err
 	}
 	return nil
+}
+
+func (s *storeRepository) Warehouse(ctx context.Context) ([]models.Warehouse, error) {
+	var warehouses []models.Warehouse
+
+	rows, err := s.db.QueryContext(ctx, "select id, title, lat, lng from warehouses")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var warehouse models.Warehouse
+		if err := rows.Scan(&warehouse.ID, &warehouse.Title, &warehouse.Lat, &warehouse.Long); err != nil {
+			return nil, err
+		}
+		warehouses = append(warehouses, warehouse)
+	}
+	return warehouses, nil
+}
+
+func (s *storeRepository) Products(ctx context.Context) ([]models.Product, error) {
+	var products []models.Product
+
+	rows, err := s.db.QueryContext(ctx, "select id, title, part_number, dimensions from products")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			dimensionsJSONB []uint8
+			product models.Product
+		)
+		if err := rows.Scan(&product.ID, &product.Title, &product.PartNumber, &dimensionsJSONB); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(dimensionsJSONB, &product.Dimensions); err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+	return products, nil
+}
+
+func (s *storeRepository) WarehouseProducts(ctx context.Context) ([]models.WarehouseProduct, error) {
+	rows, err := s.db.QueryContext(ctx, "select wp.quantity, w.id, w.title, w.lat, w.lng, p.id, p.title, p.part_number, p.dimensions from warehouse_products wp join warehouses w on wp.warehouse_id = w.id join products p on wp.product_id = p.id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var warehouseProducts []models.WarehouseProduct
+	for rows.Next() {
+		var (
+			dimensionsJSONB []uint8
+			warehouseProduct models.WarehouseProduct
+		)
+		if err := rows.Scan(
+			&warehouseProduct.Quantity, 
+			&warehouseProduct.Warehouse.ID,
+			&warehouseProduct.Warehouse.Title,
+			&warehouseProduct.Warehouse.Lat,
+			&warehouseProduct.Warehouse.Long,
+			&warehouseProduct.Product.ID,
+			&warehouseProduct.Product.Title, 
+			&warehouseProduct.Product.PartNumber,
+			&dimensionsJSONB); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(dimensionsJSONB, &warehouseProduct.Product.Dimensions); err != nil {
+			return nil, err
+		}
+		warehouseProducts = append(warehouseProducts, warehouseProduct)
+	}
+	return warehouseProducts, nil
+}
+
+func (s *storeRepository) ReservedProducts(ctx context.Context) ([]models.WarehouseProduct, error) {
+	rows, err := s.db.QueryContext(ctx, "select rp.quantity, w.id, w.title, w.lat, w.lng, p.id, p.title, p.part_number, p.dimensions from reserved_products rp join warehouse_products wp on rp.warehouse_product_id = wp.id join warehouses w on wp.warehouse_id = w.id join products p on wp.product_id = p.id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var warehouseProducts []models.WarehouseProduct
+	for rows.Next() {
+		var (
+			dimensionsJSONB []uint8
+			warehouseProduct models.WarehouseProduct
+		)
+		if err := rows.Scan(
+			&warehouseProduct.Quantity, 
+			&warehouseProduct.Warehouse.ID,
+			&warehouseProduct.Warehouse.Title,
+			&warehouseProduct.Warehouse.Lat,
+			&warehouseProduct.Warehouse.Long,
+			&warehouseProduct.Product.ID,
+			&warehouseProduct.Product.Title, 
+			&warehouseProduct.Product.PartNumber,
+			&dimensionsJSONB); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(dimensionsJSONB, &warehouseProduct.Product.Dimensions); err != nil {
+			return nil, err
+		}
+		warehouseProducts = append(warehouseProducts, warehouseProduct)
+	}
+	return warehouseProducts, nil
 }

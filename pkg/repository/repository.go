@@ -14,6 +14,11 @@ type store interface{
 	WarehouseIDsByProductID(ctx context.Context, productIDs []int) ([]int, error)
 	WarehousesByIDs(ctx context.Context, warehouseIDs []int) ([]models.Warehouse, error)
 	SetProductsToReserved(ctx context.Context, warehouseID int, productIDs []int) error
+
+	Warehouse(ctx context.Context) ([]models.Warehouse, error)
+	Products(ctx context.Context) ([]models.Product, error)
+	WarehouseProducts(ctx context.Context) ([]models.WarehouseProduct, error)
+	ReservedProducts(ctx context.Context) ([]models.WarehouseProduct, error)
 }
 
 type Repository struct {

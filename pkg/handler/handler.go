@@ -18,15 +18,14 @@ func NewHandler(serv *service.Service) *Handler {
 	}
 }
 
-// products, warehoses, reservation-products, reserved-products, cancel-reservation-products, buy-reserved-products
-
 func (h *Handler) NewRoutes() *chi.Mux {
 	mux := chi.NewRouter()
 
 	mux.Get("/products", h.products)
-	mux.Get("/warehoses", h.warehoses)
+	mux.Get("/warehouses", h.warehouses)
+	mux.Get("/reserved-products", h.reservedProducts)
+	mux.Get("/warehouse-products", h.warehouseProducts)
 	mux.Post("/reservation-products", h.reservationProducts)
-	mux.Post("/reserved-products", h.reservedProducts)
 	mux.Post("/cancel-reservation-products", h.cancelReservationProducts)
 	mux.Post("/buy-reserved-products", h.buyReservedProducts)
 
