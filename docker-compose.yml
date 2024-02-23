@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   server:
     build: .
@@ -10,10 +11,19 @@ services:
   postgres:
     image: postgres:13.3
     environment:
+
       POSTGRES_DB: "lamoda"
-      POSTGRES_USER: "hymiside"
+      POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "putingay"
     volumes:
       - .:/docker-entrypoint-initdb.d
     ports:
-      - "5430:5432"
+      - "5432:5432"
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    command: ["-database", "postgres://postgres:putingay@172.17.0.1:5432/lamoda?sslmode=disable", "-path", "/migrations", "up"]
+    depends_on:
+      - postgres
