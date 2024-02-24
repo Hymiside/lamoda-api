@@ -5,13 +5,19 @@ import (
 	"net/http"
 )
 
-func sendJSONResponse(w http.ResponseWriter, status int, data interface{}) {
+func sendJSONResponse(w http.ResponseWriter, status int, data interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		return err
+	}
+	return nil
 }
 
-func sendJSONErrorResponse(w http.ResponseWriter, errorMessage string, status int) {
+func sendJSONErrorResponse(w http.ResponseWriter, errorMessage string, status int) error {
 	errorData := map[string]string{"error": errorMessage}
-	sendJSONResponse(w, status, errorData)
+	if err := sendJSONResponse(w, status, errorData); err != nil {
+		return err
+	}
+	return nil
 }

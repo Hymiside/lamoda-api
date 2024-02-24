@@ -15,36 +15,42 @@ type ConfigServer struct {
 	Port string
 }
 
-type ProductReservationRequest struct {
-	PartNumbers []string `json:"part_numbers" validate:"required,min=1"`
-	Quantity    int      `json:"quantity" validate:"required,min=1"`
-	Lat         float64  `json:"lat" validate:"required"`
-	Long        float64  `json:"long" validate:"required"`
+type ReservationItems struct {
+	PartNumber string `json:"part_number" validate:"required"`
+	Quantity   int    `json:"quantity" validate:"required,min=1"`
+}
+
+type ReservationProductsRequest struct {
+	Items []ReservationItems `json:"items" validate:"required"`
+	Latitude      float64 `json:"latitude" validate:"required"`
+	Longitude     float64 `json:"longitude" validate:"required"`
 }
 
 type Warehouse struct {
-	ID        int `db:"id" json:"id"`
-	Title     string `db:"title" json:"title"`
-	Lat       float64 `db:"lat" json:"lat"`
-	Long      float64 `db:"lng" json:"long"`
+	ID    int     `db:"id" json:"id"`
+	Title string  `db:"title" json:"title"`
+	Latitude   float64 `db:"lat" json:"lat"`
+	Longitude  float64 `db:"lng" json:"long"`
 }
 
 type Product struct {
-	ID          int `db:"id" json:"id"` 
-	PartNumber  string `db:"part_number" json:"part_number"`
-	Title       string `db:"title" json:"title"`
-	Dimensions  *map[string]int `db:"dimensions" json:"dimensions"`
+	ID         int    `db:"id" json:"id"`
+	PartNumber string `db:"part_number" json:"part_number"`
+	Title      string `db:"title" json:"title"`
+	Width      int    `db:"width" json:"width"`
+	Height     int    `db:"height" json:"height"`
+	Depth      int    `db:"depth" json:"depth"`
 }
 
 type WarehouseProduct struct {
-	Product Product `json:"product"`
+	ProductID   int   `json:"product_id"`
 	Warehouse Warehouse `json:"warehouse"`
-	Quantity int `json:"quantity"`
+	Quantity  int       `json:"quantity"`
 }
 
 type ReservedProducts struct {
-	Product Product `json:"product"`
+	ResevationID int    `json:"reservation_id"`
+	Product   Product   `json:"product"`
 	Warehouse Warehouse `json:"warehouse"`
-	Quantity int `json:"quantity"`
 	CreatedAt time.Time `json:"created_at"`
 }

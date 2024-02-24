@@ -11,7 +11,6 @@ services:
   postgres:
     image: postgres:13.3
     environment:
-
       POSTGRES_DB: "lamoda"
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "putingay"
@@ -24,6 +23,6 @@ services:
     image: migrate/migrate
     volumes:
       - ./migrations:/migrations
-    command: ["-database", "postgres://postgres:putingay@172.17.0.1:5432/lamoda?sslmode=disable", "-path", "/migrations", "up"]
+    command: ["-database", "postgres://postgres:putingay@postgres:5432/lamoda?sslmode=disable", "-path", "/migrations", "up"]
     depends_on:
       - postgres
