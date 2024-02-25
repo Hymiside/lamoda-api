@@ -2,23 +2,26 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/Hymiside/lamoda-api/pkg/models"
+	"github.com/google/uuid"
 )
-
-type warehouseDistance struct {
-	ID   int
-	Dist float64
-}
 
 type repository interface {
 	Products(ctx context.Context) ([]models.Product, error)
-	ProductsIDsByPartNumbers(ctx context.Context, partNumbers []models.ReservationItems) ([]int, error)
-	WarehouseIDsByProductID(ctx context.Context, productIDs []int) ([]int, error)
-	WarehousesByIDs(ctx context.Context, warehouseIDs []int) ([]models.Warehouse, error)
-	SetProductsToReserved(ctx context.Context, warehouseID int, productIDs []int) error
+	ProductsIDsByPartNumbers(ctx context.Context, partNumbers []string) ([]int, error)
+	WarehousesByProductIDs(ctx context.Context, productIDs []int) ([]models.WarehouseProductID, error)
+	SetProductsToReserved(ctx context.Context, reservationID uuid.UUID, warehousesProducts []models.ReservationProducts) error
+}
+
+type reservationData struct {
+	mx    sync.RWMutex
+	wp    map[int]models.WarehouseInfo
+	avail map[int]int
 }
 
 type Service struct {
@@ -46,45 +49,72 @@ func (s *Service) ReservationProducts(ctx context.Context, req models.Reservatio
 	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
-	productIDs, err := s.repos.ProductsIDsByPartNumbers(ctx, req.Items)
+	productIDs, err := s.repos.ProductsIDsByPartNumbers(ctx, req.PartNumbers)
 	if err != nil {
 		return err
 	}
 
-	warehouseIDs, err := s.repos.WarehouseIDsByProductID(ctx, productIDs)
+	warehousesProducts, err := s.repos.WarehousesByProductIDs(ctx, productIDs)
 	if err != nil {
-		return err
-	}
-	warehouses, err := s.repos.WarehousesByIDs(ctx, warehouseIDs)
-	if err != nil {
-		return err
+		return fmt.Errorf("error to get warehouses: %v", err)
 	}
 
-	ch := make(chan warehouseDistance, len(warehouses))
-	for _, wh := range warehouses {
-		go func(warehouse models.Warehouse) {
-			ch <- warehouseDistance{
-				ID:   warehouse.ID,
-				Dist: s.distanceToWarehouse(warehouse.Latitude, warehouse.Longitude, req.Latitude, req.Longitude),
+	rd := reservationData{
+		wp:    make(map[int]models.WarehouseInfo),
+		avail: make(map[int]int),
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(warehousesProducts))
+
+	for _, wh := range warehousesProducts {
+		go func(warehouse models.WarehouseProductID) {
+			rd.mx.Lock()
+			defer func() {
+				rd.mx.Unlock()
+				wg.Done()
+			}()
+
+			if _, ok := rd.avail[warehouse.Warehouse.ID]; !ok {
+				rd.avail[warehouse.Warehouse.ID] = warehouse.Quantity
+			}
+
+			distance := s.distanceToWarehouse(req.Latitude, req.Longitude, warehouse.Warehouse.Latitude, warehouse.Warehouse.Longitude)
+
+			if _, ok := rd.wp[warehouse.ProductID]; !ok && rd.avail[warehouse.Warehouse.ID] > 0 {
+				rd.wp[warehouse.ProductID] = models.WarehouseInfo{
+					WarehouseID: warehouse.Warehouse.ID,
+					Dist:        distance,
+				}
+				rd.avail[warehouse.Warehouse.ID]--
+			} else {
+				if rd.wp[warehouse.ProductID].Dist > distance && rd.avail[warehouse.Warehouse.ID] > 0 {
+					rd.wp[warehouse.ProductID] = models.WarehouseInfo{
+						WarehouseID: warehouse.Warehouse.ID,
+						Dist:        distance,
+					}
+					rd.avail[warehouse.Warehouse.ID]--
+				}
 			}
 		}(wh)
 	}
 
-	var whID int
-	minDistanceToWarehouse := math.MaxFloat64
-	for i := 0; i < len(warehouses); i++ {
-		wh := <-ch
-		if wh.Dist < minDistanceToWarehouse {
-			minDistanceToWarehouse = wh.Dist
-			whID = wh.ID
-		}
+	wg.Wait()
+
+	var reservation []models.ReservationProducts
+	for i, v := range rd.wp {
+		reservation = append(
+			reservation,
+			models.ReservationProducts{
+				ProductID:   i,
+				WarehouseID: v.WarehouseID,
+			})
 	}
 
-	err = s.repos.SetProductsToReserved(ctx, whID, productIDs)
+	err = s.repos.SetProductsToReserved(ctx, uuid.New(), reservation)
 	if err != nil {
 		return err
 	}
-	
 	return nil
 }
 

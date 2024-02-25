@@ -1,6 +1,5 @@
 package models
 
-import "time"
 
 type ConfigPostgres struct {
 	User     string
@@ -15,42 +14,40 @@ type ConfigServer struct {
 	Port string
 }
 
-type ReservationItems struct {
-	PartNumber string `json:"part_number" validate:"required"`
-	Quantity   int    `json:"quantity" validate:"required,min=1"`
-}
-
 type ReservationProductsRequest struct {
-	Items []ReservationItems `json:"items" validate:"required"`
-	Latitude      float64 `json:"latitude" validate:"required"`
-	Longitude     float64 `json:"longitude" validate:"required"`
+	PartNumbers   []string `json:"part_numbers" validate:"required,min=1"`
+	Latitude      float64  `json:"latitude" validate:"required"`
+	Longitude     float64  `json:"longitude" validate:"required"`
 }
 
 type Warehouse struct {
-	ID    int     `db:"id" json:"id"`
-	Title string  `db:"title" json:"title"`
-	Latitude   float64 `db:"lat" json:"lat"`
-	Longitude  float64 `db:"lng" json:"long"`
+	ID    int     `json:"id"`
+	Title string  `json:"title"`
+	Latitude   float64 `json:"lat"`
+	Longitude  float64 `json:"long"`
 }
 
 type Product struct {
-	ID         int    `db:"id" json:"id"`
-	PartNumber string `db:"part_number" json:"part_number"`
-	Title      string `db:"title" json:"title"`
-	Width      int    `db:"width" json:"width"`
-	Height     int    `db:"height" json:"height"`
-	Depth      int    `db:"depth" json:"depth"`
+	ID         int    `json:"id"`
+	PartNumber string `json:"part_number"`
+	Title      string `json:"title"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	Depth      int    `json:"depth"`
 }
 
-type WarehouseProduct struct {
-	ProductID   int   `json:"product_id"`
-	Warehouse Warehouse `json:"warehouse"`
-	Quantity  int       `json:"quantity"`
+type WarehouseProductID struct {
+	ProductID   int
+	Quantity	int
+	Warehouse Warehouse
 }
 
-type ReservedProducts struct {
-	ResevationID int    `json:"reservation_id"`
-	Product   Product   `json:"product"`
-	Warehouse Warehouse `json:"warehouse"`
-	CreatedAt time.Time `json:"created_at"`
+type ReservationProducts struct {
+	ProductID    int
+	WarehouseID  int
+}
+
+type WarehouseInfo struct {
+	WarehouseID int
+	Dist        float64
 }
