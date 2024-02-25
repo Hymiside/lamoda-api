@@ -11,9 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// норм юзать интерфейсы, убрать wg и заюзать структуру, переделать БД, убрать таймаут контекст, убрать ненужные функции, переделать возвраты ошибок
-// переделать запросы к БД, написать тесты, проверка rows на ошибку
-
 type service interface {
 	ReservationProducts(ctx context.Context, data models.ReservationProductsRequest) error
 	Products(ctx context.Context) ([]models.Product, error)

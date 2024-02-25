@@ -3,6 +3,7 @@ module github.com/Hymiside/lamoda-api
 go 1.21.1
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-chi/chi/v5 v5.0.12 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

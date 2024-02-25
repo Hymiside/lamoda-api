@@ -38,16 +38,11 @@ type Product struct {
 
 type WarehouseProductID struct {
 	ProductID   int
-	Quantity	int
-	Warehouse Warehouse
+	WarehouseID int
+	Distance   float64
 }
 
 type ReservationProducts struct {
 	ProductID    int
 	WarehouseID  int
-}
-
-type WarehouseInfo struct {
-	WarehouseID int
-	Dist        float64
 }

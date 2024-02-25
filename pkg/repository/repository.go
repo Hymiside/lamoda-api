@@ -47,23 +47,31 @@ func (s *Repository) ProductsIDsByPartNumbers(ctx context.Context, partNumbers [
 	return ids, nil
 }
 
-func (s *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []int) ([]models.WarehouseProductID, error) {
-	queryParams, values := make([]string, len(productIDs)), make([]interface{}, len(productIDs))
-	for i, v := range productIDs {
-		queryParams[i], values[i] = fmt.Sprintf("$%d", i+1), v
+func (s *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []int, lat, long float64) ([]models.WarehouseProductID, error) {
+	queryParams, values := make([]string, len(productIDs)), []interface{}{lat, long}
+	for i := 0; i < len(productIDs); i++ {
+		queryParams[i] = fmt.Sprintf("$%d", i+3)
+		values = append(values, productIDs[i])
 	}
 
+	fmt.Println(values...)
+
 	query := fmt.Sprintf(
-		`select
+		`SELECT
 			wp.product_id,
-			wp.quantity,
-			w.id,
-			w.lat,
-			w.lng
-		from warehouse_products wp 
-		join warehouses w on 
-			wp.warehouse_id = w.id and w.available = true
-		where wp.product_id in (%s) and wp.quantity > 0`,
+			wp.warehouse_id,
+			ST_Distance(
+				ST_Transform(ST_SetSRID(ST_MakePoint($1, $2), 4326), 3857), 
+				ST_Transform(ST_SetSRID(ST_MakePoint(w.lat, w.lng), 4326), 3857)
+			) AS distance
+		FROM 
+			warehouse_products wp
+		JOIN 
+			warehouses w ON wp.warehouse_id = w.id AND available = true
+		WHERE 
+			wp.product_id IN (%s) AND wp.quantity > 0
+		ORDER BY 
+			distance`,
 		strings.Join(queryParams, ","))
 
 	rows, err := s.db.QueryContext(ctx, query, values...)
@@ -77,10 +85,8 @@ func (s *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []in
 		var wh models.WarehouseProductID
 		if err := rows.Scan(
 			&wh.ProductID,
-			&wh.Quantity,
-			&wh.Warehouse.ID,
-			&wh.Warehouse.Latitude,
-			&wh.Warehouse.Longitude,
+			&wh.WarehouseID,
+			&wh.Distance,
 		); err != nil {
 			return nil, fmt.Errorf("scan error: %v", err)
 		}
@@ -93,11 +99,11 @@ func (s *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []in
 	return warehouses, nil
 }
 
-func (s *Repository) SetProductsToReserved(ctx context.Context, reservationID uuid.UUID, warehousesProducts []models.ReservationProducts) error {
+func (s *Repository) SetProductsToReserved(ctx context.Context, reservationID uuid.UUID, warehousesProducts map[int]int) error {
 	var warehouseIDs, productIDs []int
-	for _, v := range warehousesProducts {
-		warehouseIDs = append(warehouseIDs, v.WarehouseID)
-		productIDs = append(productIDs, v.ProductID)
+	for pID, wID := range warehousesProducts {
+		productIDs = append(productIDs, pID)
+		warehouseIDs = append(warehouseIDs, wID)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -135,7 +141,7 @@ func (s *Repository) SetProductsToReserved(ctx context.Context, reservationID uu
 
 func (s *Repository) warehouseProductIDs(ctx context.Context, tx *sql.Tx, warehouseIDs, productIDs []int) ([]int, error) {
 	query := "select id from warehouse_products where warehouse_id = ANY($1) and product_id = ANY($2)"
-	rows, err := tx.QueryContext(ctx, query,pq.Array(warehouseIDs), pq.Array(productIDs))
+	rows, err := tx.QueryContext(ctx, query, pq.Array(warehouseIDs), pq.Array(productIDs))
 	if err != nil {
 		return nil, fmt.Errorf("error to get warehousesids: %w", err)
 	}
@@ -157,7 +163,7 @@ func (s *Repository) warehouseProductIDs(ctx context.Context, tx *sql.Tx, wareho
 }
 
 func (s *Repository) Products(ctx context.Context) ([]models.Product, error) {
-	rows, err := s.db.QueryContext(ctx, "select id, title, part_number, dimensions from products")
+	rows, err := s.db.QueryContext(ctx, "select id, title, part_number, width, height, depth from products")
 	if err != nil {
 		return nil, fmt.Errorf("query error: %v", err)
 	}
