@@ -9,14 +9,13 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/joho/godotenv"
-
 	"github.com/Hymiside/lamoda-api/pkg/handler"
 	"github.com/Hymiside/lamoda-api/pkg/models"
 	"github.com/Hymiside/lamoda-api/pkg/repository"
 	"github.com/Hymiside/lamoda-api/pkg/server"
 	"github.com/Hymiside/lamoda-api/pkg/service"
 	log "github.com/sirupsen/logrus"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -28,10 +27,10 @@ func main() {
 		FullTimestamp:   true,
 		TimestampFormat: "2006-01-02 15:04:05",
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-            _, filename := path.Split(f.File)
-            filename = fmt.Sprintf("%s:%d", filename, f.Line)
-            return "", filename
-        },
+			_, filename := path.Split(f.File)
+			filename = fmt.Sprintf("%s:%d", filename, f.Line)
+			return "", filename
+		},
 	})
 
 	if err := godotenv.Load(); err != nil {

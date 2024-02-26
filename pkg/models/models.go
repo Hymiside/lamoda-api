@@ -54,11 +54,7 @@ type ReservationProducts struct {
 }
 
 type AvailabilityProducts struct {
-	Product     Product
+	Product        Product
 	WarehouseAvail bool
-	Quantity    int
-}
-
-type WarehouseID struct {
-	ID int `json:"warehouse_id" validate:"required"`
+	Quantity       int
 }

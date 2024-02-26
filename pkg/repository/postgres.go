@@ -8,7 +8,6 @@ import (
 	"github.com/Hymiside/lamoda-api/pkg/models"
 )
 
-
 func NewPostgresDB(ctx context.Context, c models.ConfigPostgres) (*sql.DB, error) {
 	psqlInfo := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", c.User, c.Password, c.Host, c.Port, c.Name)
 	db, err := sql.Open("postgres", psqlInfo)

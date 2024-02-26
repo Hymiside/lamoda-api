@@ -13,7 +13,7 @@ type repository interface {
 	ProductsIDsByPartNumbers(ctx context.Context, partNumbers []string) ([]int, error)
 	AvailabilityProductsByWarehouseID(ctx context.Context, warehouseID int) ([]models.AvailabilityProducts, error)
 	WarehousesByProductIDs(ctx context.Context, productIDs []int, lat, long float64) ([]models.WarehouseProduct, error)
-	
+
 	SetProductsToReserved(ctx context.Context, reservationID uuid.UUID, warehousesProducts map[int]int) (uuid.UUID, error)
 	SetProductsToConfirmedOrCanceledByProductIDs(ctx context.Context, status int, reservationData models.CancelORConfirmProductsRequest) error
 	SetProductsToConfirmedOrCanceled(ctx context.Context, status int, reservationID uuid.UUID) error
