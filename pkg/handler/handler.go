@@ -8,12 +8,16 @@ import (
 	"github.com/Hymiside/lamoda-api/pkg/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type service interface {
-	ReservationProducts(ctx context.Context, data models.ReservationProductsRequest) error
 	Products(ctx context.Context) ([]models.Product, error)
+	AvailabilityProductsByWarehouseID(ctx context.Context, warehouseID int) ([]models.AvailabilityProducts, error)
+
+	ReservationProducts(ctx context.Context, data models.ReservationProductsRequest) (uuid.UUID, error)
+	ConfirmOrCancelReservedProducts(ctx context.Context, status int, req models.CancelORConfirmProductsRequest) error
 }
 
 type Handler struct {
@@ -32,6 +36,7 @@ func (h *Handler) NewRoutes() *chi.Mux {
 	mux := chi.NewRouter()
 
 	mux.Get("/products", h.products)
+	mux.Get("/products/reserved", h.availabilityProduct)
 	mux.Post("/reservation-products", h.reservationProducts)
 	mux.Delete("/reservation-products", h.cancelReservationProducts)
 	mux.Post("/confirm-reservation", h.confirmReservationProducts)
@@ -42,10 +47,52 @@ func (h *Handler) NewRoutes() *chi.Mux {
 func (h *Handler) products(w http.ResponseWriter, r *http.Request) {
 	products, err := h.services.Products(r.Context())
 	if err != nil {
-		sendJSONErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		log.Errorf("error to get products: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	sendJSONResponse(w, http.StatusOK, map[string][]models.Product{"message": products})
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(
+		map[string][]models.Product{"message": products},
+	); err != nil {
+		log.Errorf("error to encode products: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) availabilityProduct(w http.ResponseWriter, r *http.Request) {
+	var warehouseID models.WarehouseID
+
+	err := json.NewDecoder(r.Body).Decode(&warehouseID)
+	if err != nil {
+		log.Errorf("error to decode request: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = h.validate.Struct(warehouseID); err != nil {
+		log.Errorf("validation error: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	reservedProducts, err := h.services.AvailabilityProductsByWarehouseID(r.Context(), warehouseID.ID)
+	if err != nil {
+		log.Errorf("error to get reserved products: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(
+		map[string][]models.AvailabilityProducts{"message": reservedProducts},
+	); err != nil {
+		log.Errorf("error to encode products: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func (h *Handler) reservationProducts(w http.ResponseWriter, r *http.Request) {
@@ -54,32 +101,79 @@ func (h *Handler) reservationProducts(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		log.Errorf("error to decode request: %v", err)
-		if err = sendJSONErrorResponse(w, err.Error(), http.StatusInternalServerError); err != nil {
-			log.Errorf("error to send response: %v", err)
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err = h.validate.Struct(req); err != nil {
 		log.Errorf("validation error: %v", err)
-		if err = sendJSONErrorResponse(w, err.Error(), http.StatusInternalServerError); err != nil {
-			log.Errorf("error to send response: %v", err)
-		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err = h.services.ReservationProducts(r.Context(), req); err != nil {
+	reservationID, err := h.services.ReservationProducts(r.Context(), req)
+	if err != nil {
 		log.Errorf("error to reservation products: %v", err)
-		if err = sendJSONErrorResponse(w, err.Error(), http.StatusInternalServerError); err != nil {
-			log.Errorf("error to send response: %v", err)
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err = sendJSONResponse(w, http.StatusOK, map[string]string{"message": "success"}); err != nil {
-		log.Errorf("error to send response: %v", err)
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(
+		map[string]uuid.UUID{"message": reservationID},
+	); err != nil {
+		log.Errorf("error to encode products: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func (h *Handler) cancelReservationProducts(w http.ResponseWriter, r *http.Request) {}
+func (h *Handler) cancelReservationProducts(w http.ResponseWriter, r *http.Request) {
+	var req models.CancelORConfirmProductsRequest
 
-func (h *Handler) confirmReservationProducts(w http.ResponseWriter, r *http.Request) {}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Errorf("error to decode request: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = h.validate.Struct(req); err != nil {
+		log.Errorf("validation error: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err = h.services.ConfirmOrCancelReservedProducts(r.Context(), 2, req); err != nil {
+		log.Errorf("error to cancel reserved products: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) confirmReservationProducts(w http.ResponseWriter, r *http.Request) {
+	var req models.CancelORConfirmProductsRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Errorf("error to decode request: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = h.validate.Struct(req); err != nil {
+		log.Errorf("validation error: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err = h.services.ConfirmOrCancelReservedProducts(r.Context(), 2, req); err != nil {
+		log.Errorf("error to confirm reserved products: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

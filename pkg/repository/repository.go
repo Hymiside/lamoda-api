@@ -19,14 +19,14 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (s *Repository) ProductsIDsByPartNumbers(ctx context.Context, partNumbers []string) ([]int, error) {
+func (r *Repository) ProductsIDsByPartNumbers(ctx context.Context, partNumbers []string) ([]int, error) {
 	queryParams, vals := make([]string, len(partNumbers)), make([]interface{}, len(partNumbers))
 	for i, v := range partNumbers {
 		queryParams[i], vals[i] = fmt.Sprintf("$%d", i+1), v
 	}
 
 	query := fmt.Sprintf("select id from products where part_number in (%s)", strings.Join(queryParams, ","))
-	rows, err := s.db.QueryContext(ctx, query, vals...)
+	rows, err := r.db.QueryContext(ctx, query, vals...)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %v", err)
 	}
@@ -47,14 +47,12 @@ func (s *Repository) ProductsIDsByPartNumbers(ctx context.Context, partNumbers [
 	return ids, nil
 }
 
-func (s *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []int, lat, long float64) ([]models.WarehouseProductID, error) {
+func (r *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []int, lat, long float64) ([]models.WarehouseProduct, error) {
 	queryParams, values := make([]string, len(productIDs)), []interface{}{lat, long}
 	for i := 0; i < len(productIDs); i++ {
 		queryParams[i] = fmt.Sprintf("$%d", i+3)
 		values = append(values, productIDs[i])
 	}
-
-	fmt.Println(values...)
 
 	query := fmt.Sprintf(
 		`SELECT
@@ -64,25 +62,21 @@ func (s *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []in
 				ST_Transform(ST_SetSRID(ST_MakePoint($1, $2), 4326), 3857), 
 				ST_Transform(ST_SetSRID(ST_MakePoint(w.lat, w.lng), 4326), 3857)
 			) AS distance
-		FROM 
-			warehouse_products wp
-		JOIN 
-			warehouses w ON wp.warehouse_id = w.id AND available = true
-		WHERE 
-			wp.product_id IN (%s) AND wp.quantity > 0
-		ORDER BY 
-			distance`,
+		FROM warehouse_products wp
+		JOIN warehouses w ON wp.warehouse_id = w.id AND available = true
+		WHERE wp.product_id IN (%s) AND wp.quantity > 0
+		ORDER BY distance`,
 		strings.Join(queryParams, ","))
 
-	rows, err := s.db.QueryContext(ctx, query, values...)
+	rows, err := r.db.QueryContext(ctx, query, values...)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %v", err)
 	}
 	defer rows.Close()
 
-	var warehouses []models.WarehouseProductID
+	var warehouses []models.WarehouseProduct
 	for rows.Next() {
-		var wh models.WarehouseProductID
+		var wh models.WarehouseProduct
 		if err := rows.Scan(
 			&wh.ProductID,
 			&wh.WarehouseID,
@@ -99,22 +93,22 @@ func (s *Repository) WarehousesByProductIDs(ctx context.Context, productIDs []in
 	return warehouses, nil
 }
 
-func (s *Repository) SetProductsToReserved(ctx context.Context, reservationID uuid.UUID, warehousesProducts map[int]int) error {
+func (r *Repository) SetProductsToReserved(ctx context.Context, reservationID uuid.UUID, warehousesProducts map[int]int) (uuid.UUID, error) {
 	var warehouseIDs, productIDs []int
 	for pID, wID := range warehousesProducts {
 		productIDs = append(productIDs, pID)
 		warehouseIDs = append(warehouseIDs, wID)
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return uuid.Nil, fmt.Errorf("error to begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	warehouseProductIDs, err := s.warehouseProductIDs(ctx, tx, warehouseIDs, productIDs)
+	warehouseProductIDs, err := r.warehouseProductIDs(ctx, tx, warehouseIDs, productIDs)
 	if err != nil {
-		return fmt.Errorf("error to get warehouse product ids: %w", err)
+		return uuid.Nil, fmt.Errorf("error to get warehouse product ids: %w", err)
 	}
 
 	queryParams, values := make([]string, len(warehouseProductIDs)), make([]interface{}, 0, len(warehouseProductIDs)*3)
@@ -123,23 +117,33 @@ func (s *Repository) SetProductsToReserved(ctx context.Context, reservationID uu
 		values = append(values, reservationID, warehouseProductIDs[i], 1)
 	}
 
-	query := fmt.Sprintf("insert into reserved_products (reservation_id, warehouse_product_id, quantity) values %s", strings.Join(queryParams, ", "))
-	if _, err = tx.ExecContext(ctx, query, values...); err != nil {
-		return fmt.Errorf("error to set products to reserved: %w", err)
+	query := fmt.Sprintf(
+		`INSERT INTO reserved_products (reservation_id, warehouse_product_id, quantity) 
+		VALUES %s 
+		RETURNING reservation_id`,
+		strings.Join(queryParams, ", "))
+	row := tx.QueryRowContext(ctx, query, values...)
+	if row.Err() != nil {
+		return uuid.Nil, fmt.Errorf("error to set products to reserved: %w", row.Err())
+	}
+
+	var rID uuid.UUID
+	if err = row.Scan(&rID); err != nil {
+		return uuid.Nil, fmt.Errorf("scan error: %w", err)
 	}
 
 	query = "update warehouse_products set quantity = quantity - 1 where warehouse_id = ANY($1) and product_id = ANY($2)"
 	if _, err = tx.ExecContext(ctx, query, pq.Array(warehouseIDs), pq.Array(productIDs)); err != nil {
-		return fmt.Errorf("error to update quantity in warehouse_products: %w", err)
+		return uuid.Nil, fmt.Errorf("error to update quantity in warehouse_products: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("commit error: %w", err)
+		return uuid.Nil, fmt.Errorf("commit error: %w", err)
 	}
-	return nil
+	return rID, nil
 }
 
-func (s *Repository) warehouseProductIDs(ctx context.Context, tx *sql.Tx, warehouseIDs, productIDs []int) ([]int, error) {
+func (r *Repository) warehouseProductIDs(ctx context.Context, tx *sql.Tx, warehouseIDs, productIDs []int) ([]int, error) {
 	query := "select id from warehouse_products where warehouse_id = ANY($1) and product_id = ANY($2)"
 	rows, err := tx.QueryContext(ctx, query, pq.Array(warehouseIDs), pq.Array(productIDs))
 	if err != nil {
@@ -162,8 +166,8 @@ func (s *Repository) warehouseProductIDs(ctx context.Context, tx *sql.Tx, wareho
 	return warehouseProductIDs, nil
 }
 
-func (s *Repository) Products(ctx context.Context) ([]models.Product, error) {
-	rows, err := s.db.QueryContext(ctx, "select id, title, part_number, width, height, depth from products")
+func (r *Repository) Products(ctx context.Context) ([]models.Product, error) {
+	rows, err := r.db.QueryContext(ctx, "select id, title, part_number, width, height, depth from products")
 	if err != nil {
 		return nil, fmt.Errorf("query error: %v", err)
 	}
@@ -189,4 +193,82 @@ func (s *Repository) Products(ctx context.Context) ([]models.Product, error) {
 		return nil, fmt.Errorf("rows error: %v", err)
 	}
 	return products, nil
+}
+
+func (r *Repository) AvailabilityProductsByWarehouseID(ctx context.Context, warehouseID int) ([]models.AvailabilityProducts, error) {
+	rows, err := r.db.QueryContext(
+		ctx,
+		`SELECT
+			p.id,
+			p.part_number,
+			p.title,
+			wp.quantity,
+			w.available
+		FROM warehouse_products wp
+		JOIN warehouses w ON wp.warehouse_id = w.id
+		JOIN products p ON wp.product_id = p.id
+		WHERE wp.warehouse_id = $1`,
+		warehouseID)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer rows.Close()
+
+	var availabilityProducts []models.AvailabilityProducts
+	for rows.Next() {
+		var availabilityProduct models.AvailabilityProducts
+		if err := rows.Scan(
+			&availabilityProduct.Product.ID,
+			&availabilityProduct.Product.PartNumber,
+			&availabilityProduct.Product.Title,
+			&availabilityProduct.Quantity,
+			&availabilityProduct.WarehouseAvail,
+		); err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+		availabilityProducts = append(availabilityProducts, availabilityProduct)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+	return availabilityProducts, nil
+}
+
+func (r *Repository) SetProductsToConfirmedOrCanceledByProductIDs(ctx context.Context, status int, reservationData models.CancelORConfirmProductsRequest) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error to begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	productIDs, err := r.ProductsIDsByPartNumbers(ctx, reservationData.PartNumbers)
+	if err != nil {
+		return fmt.Errorf("error to get products ids: %w", err)
+	}
+
+	if _, err := r.db.ExecContext(
+		ctx,
+		`UPDATE reserved_products rp
+		SET status = $1
+		FROM warehouse_products wp
+		JOIN warehouses w ON wp.warehouse_id = w.id
+		JOIN products p ON wp.product_id = p.id
+		WHERE rp.warehouse_product_id = wp.id AND rp.reservation_id = $2 AND wp.product_id = ANY($3)`,
+		status, reservationData.ReservationID, pq.Array(productIDs),
+	); err != nil {
+		return fmt.Errorf("error to set products to confirmed: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) SetProductsToConfirmedOrCanceled(ctx context.Context, status int, reservationID uuid.UUID) error {
+	if _, err := r.db.ExecContext(
+		ctx,
+		`UPDATE reserved_products SET status = $1 WHERE reservation_id = $2`,
+		status, reservationID,
+	); err != nil {
+		return fmt.Errorf("error to set products to confirmed: %w", err)
+	}
+	return nil
 }

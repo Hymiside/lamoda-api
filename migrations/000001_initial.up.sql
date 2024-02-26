@@ -34,18 +34,19 @@ CREATE TABLE reserved_products (
     reservation_id UUID,
     warehouse_product_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL CONSTRAINT positive_quantity CHECK (quantity > 0),
-    status INT NOT NULL DEFAULT 0, -- 0 - reserved, 1 - cancelled, 2 - shipped
+    status INT NOT NULL DEFAULT 0, -- 0 - reserved, 1 - cancelled, 2 - confirmed
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
+    UNIQUE (reservation_id, warehouse_product_id),
     FOREIGN KEY (warehouse_product_id) REFERENCES warehouse_products(id) ON DELETE CASCADE
 );
 
 INSERT INTO warehouses (title, available, lat, lng) VALUES 
-    ('Warehouse G', true, 52.5200, 13.4050),
-    ('Warehouse H', true, 55.7558, 37.6176),
-    ('Warehouse I', false, 35.6895, 139.6917),
-    ('Warehouse J', false, 48.8566, 2.3522),
-    ('Warehouse K', true, 51.5074, 0.1278);
+    ('Warehouse G', true, 57.997832, 56.154407),
+    ('Warehouse H', true, 58.005939, 56.210803),
+    ('Warehouse I', false, 59.958625, 30.299381),
+    ('Warehouse J', false, 60.015066, 30.650940),
+    ('Warehouse K', true, 59.836934, 30.511144);
 
 INSERT INTO products (title, part_number, width, height, depth) VALUES 
     ('Product 5', 'P97531', 10, 23, 15),
