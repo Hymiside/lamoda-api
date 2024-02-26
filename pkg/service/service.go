@@ -10,8 +10,8 @@ import (
 
 type repository interface {
 	Products(ctx context.Context) ([]models.Product, error)
-	AvailabilityProductsByWarehouseID(ctx context.Context, warehouseID int) ([]models.AvailabilityProducts, error)
 	ProductsIDsByPartNumbers(ctx context.Context, partNumbers []string) ([]int, error)
+	AvailabilityProductsByWarehouseID(ctx context.Context, warehouseID int) ([]models.AvailabilityProducts, error)
 	WarehousesByProductIDs(ctx context.Context, productIDs []int, lat, long float64) ([]models.WarehouseProduct, error)
 	
 	SetProductsToReserved(ctx context.Context, reservationID uuid.UUID, warehousesProducts map[int]int) (uuid.UUID, error)

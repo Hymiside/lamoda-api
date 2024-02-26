@@ -18,8 +18,6 @@ CREATE TABLE products (
     depth INTEGER
 );
 
-CREATE INDEX part_number_idx ON products (part_number);
-
 CREATE TABLE warehouse_products (
     id SERIAL PRIMARY KEY,
     warehouse_id INTEGER NOT NULL,
