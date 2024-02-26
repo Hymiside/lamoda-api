@@ -14,11 +14,11 @@ git clone https://github.com/Hymiside/lamoda-api.git
 ```
 2. Выполните команду сброки (если необходимо, используйте `sudo`)
 ```
-docker compose build
+make build
 ```
 3. Выполните команду запуска
 ```
-docker compose up
+make up
 ```
 
 ## Методы и ответы API
