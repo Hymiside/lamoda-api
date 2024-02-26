@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 golang:1.21.0
+FROM --platform=linux/arm64/v8 golang:1.21.0
 
 WORKDIR /lamoda-api
 
