@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"path"
-	"runtime"
 	"os"
 	"os/signal"
+	"path"
+	"runtime"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -15,6 +14,7 @@ import (
 	"github.com/Hymiside/lamoda-api/pkg/handler"
 	"github.com/Hymiside/lamoda-api/pkg/models"
 	"github.com/Hymiside/lamoda-api/pkg/repository"
+	"github.com/Hymiside/lamoda-api/pkg/server"
 	"github.com/Hymiside/lamoda-api/pkg/service"
 	log "github.com/sirupsen/logrus"
 )
@@ -63,20 +63,10 @@ func main() {
 		}
 	}()
 
-	httpServer := &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", os.Getenv("SERVER_HOST"), os.Getenv("SERVER_PORT")),
-		Handler: handlers.NewRoutes(),
-	}
-
-	go func() {
-		<-ctx.Done()
-		if err := httpServer.Shutdown(context.Background()); err != nil {
-			log.Fatalf("failed to shutdown server: %v", err)
-		}
-	}()
-
-	log.Infof("server started on http://%s:%s/", os.Getenv("SERVER_HOST"), os.Getenv("SERVER_PORT"))
-	if err = httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("failed to run server: %v", err)
+	if err = server.StartServer(ctx, handlers.NewRoutes(), models.ConfigServer{
+		Host: os.Getenv("SERVER_HOST"),
+		Port: os.Getenv("SERVER_PORT"),
+	}); err != nil {
+		log.Fatalf("error to start server: %v", err)
 	}
 }
