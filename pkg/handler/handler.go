@@ -37,7 +37,7 @@ func (h *Handler) NewRoutes() *chi.Mux {
 	mux := chi.NewRouter()
 
 	mux.Get("/products", h.products)
-	mux.Get("/products/avilability/{warehouse_id}", h.availabilityProduct)
+	mux.Get("/products/availability", h.availabilityProduct)
 	mux.Post("/reservation-products", h.reservationProducts)
 	mux.Delete("/reservation-products", h.cancelReservationProducts)
 	mux.Post("/confirm-reservation", h.confirmReservationProducts)
