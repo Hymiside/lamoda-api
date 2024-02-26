@@ -28,17 +28,17 @@ GET: /products
 Пример ответа от сервера:
 ```json
 {
-	[
-		{
-			"id": 1,
-			"part_number": "P13579",
-			"title": "Product 1",
-			"width": 100,
-			"height": 100,
-			"depth": 100
-		},
-		...
-	]
+  [
+    {
+      "id": 1,
+      "part_number": "P13579",
+      "title": "Product 1",
+      "width": 100,
+      "height": 100,
+      "depth": 100
+    },
+    ...
+  ]
 }
 ```
 Статус коды для ответов:
@@ -63,8 +63,8 @@ GET: /products/availability?warehouse_id={integer}
       "WarehouseAvail": true,
       "Quantity": 2
     },
-		...
-	]
+    ...
+  ]
 }
 ```
 Статус коды для ответов:
@@ -81,14 +81,14 @@ POST: /reservation-products
 ```json
 {
   "part_numbers": ["P13579", "P97431", "P13279"], // required
-	"latitude": 21.213, // required
+  "latitude": 21.213, // required
   "longitude": 32.23 // required
 }
 ```
 Пример ответа от сервера:
 ```json
 {
-	"reservation_id": "00000000-0000-0000-0000-000000000000"
+  "reservation_id": "00000000-0000-0000-0000-000000000000"
 }
 ```
 Статус коды для ответов:
@@ -104,8 +104,8 @@ DELETE: /reservation-products
 Пример тестового запроса
 ```json
 {
-	"reservation_id": "00000000-0000-0000-0000-000000000000", // required
-	"part_numbers": ["P13579"]
+  "reservation_id": "00000000-0000-0000-0000-000000000000", // required
+  "part_numbers": ["P13579"]
 }
 ```
 Статус коды для ответов:
@@ -122,8 +122,8 @@ POST: /confirm-reservation
 Пример тестового запроса
 ```json
 {
-	"reservation_id": "00000000-0000-0000-0000-000000000000", // required
-	"part_numbers": ["P13579"]
+  "reservation_id": "00000000-0000-0000-0000-000000000000", // required
+  "part_numbers": ["P13579"]
 }
 ```
 Статус коды для ответов:
