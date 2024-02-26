@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/Hymiside/lamoda-api/pkg/models"
 	"github.com/go-chi/chi/v5"
@@ -36,7 +37,7 @@ func (h *Handler) NewRoutes() *chi.Mux {
 	mux := chi.NewRouter()
 
 	mux.Get("/products", h.products)
-	mux.Get("/products/reserved", h.availabilityProduct)
+	mux.Get("/products/avilability/{warehouse_id}", h.availabilityProduct)
 	mux.Post("/reservation-products", h.reservationProducts)
 	mux.Delete("/reservation-products", h.cancelReservationProducts)
 	mux.Post("/confirm-reservation", h.confirmReservationProducts)
@@ -63,22 +64,20 @@ func (h *Handler) products(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) availabilityProduct(w http.ResponseWriter, r *http.Request) {
-	var warehouseID models.WarehouseID
-
-	err := json.NewDecoder(r.Body).Decode(&warehouseID)
-	if err != nil {
-		log.Errorf("error to decode request: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	queryVal := r.URL.Query().Get("warehouse_id")
+	if queryVal == "" {
+		http.Error(w, "warehouse_id is required", http.StatusBadRequest)
 		return
 	}
 
-	if err = h.validate.Struct(warehouseID); err != nil {
-		log.Errorf("validation error: %v", err)
+	warehouseID, err := strconv.Atoi(queryVal)
+	if err != nil {
+		log.Errorf("error to convert warehouse_id: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	reservedProducts, err := h.services.AvailabilityProductsByWarehouseID(r.Context(), warehouseID.ID)
+	reservedProducts, err := h.services.AvailabilityProductsByWarehouseID(r.Context(), warehouseID)
 	if err != nil {
 		log.Errorf("error to get reserved products: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
