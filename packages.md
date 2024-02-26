@@ -7,3 +7,5 @@
 4. `github.com/go-playground/validator/v10` – Пакет validator реализует валидацию значений для структур и отдельных полей на основе тегов
 5. `github.com/go-chi/chi/v5` – Пакет chi является легким и простым маршрутизатором для создания HTTP-сервисов на Go
 6. `github.com/lib/pq` – Пакет pq является чистым драйвером Postgres для пакета database/sql на Go
+7. `github.com/stretchr/testify/mock` – Пакет mock позволяет создавать моки для структур и функций
+8. `github.com/stretchr/testify/assert` – Пакет assert позволяет проверять структуры и функции

@@ -236,39 +236,103 @@ func (r *Repository) AvailabilityProductsByWarehouseID(ctx context.Context, ware
 }
 
 func (r *Repository) SetProductsToConfirmedOrCanceledByProductIDs(ctx context.Context, status int, reservationData models.CancelORConfirmProductsRequest) error {
+	productIDs, err := r.ProductsIDsByPartNumbers(ctx, reservationData.PartNumbers)
+	if err != nil {
+		return fmt.Errorf("error to get products ids: %w", err)
+	}
+
+	if len(productIDs) == 0 {
+		return nil
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error to begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	productIDs, err := r.ProductsIDsByPartNumbers(ctx, reservationData.PartNumbers)
-	if err != nil {
-		return fmt.Errorf("error to get products ids: %w", err)
-	}
-
-	if _, err := r.db.ExecContext(
+	rows, err := tx.QueryContext(
 		ctx,
 		`UPDATE reserved_products rp
 		SET status = $1
 		FROM warehouse_products wp
 		JOIN warehouses w ON wp.warehouse_id = w.id
 		JOIN products p ON wp.product_id = p.id
-		WHERE rp.warehouse_product_id = wp.id AND rp.reservation_id = $2 AND wp.product_id = ANY($3)`,
+		WHERE rp.warehouse_product_id = wp.id AND rp.reservation_id = $2 AND wp.product_id = ANY($3) AND rp.status = 0
+		RETURNING rp.warehouse_product_id`,
 		status, reservationData.ReservationID, pq.Array(productIDs),
-	); err != nil {
+	); 
+	if err != nil {
 		return fmt.Errorf("error to set products to confirmed: %w", err)
 	}
+
+	var warehouseProductIDs []int
+	for rows.Next() {
+		var warehouseProductID int
+		if err := rows.Scan(&warehouseProductID); err != nil {
+			return fmt.Errorf("scan error: %w", err)
+		}
+		warehouseProductIDs = append(warehouseProductIDs, warehouseProductID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("rows error: %w", err)
+	}
+
+	if _, err := tx.ExecContext( 
+		ctx,
+		`UPDATE warehouse_products SET quantity = quantity + 1 WHERE id = ANY($1)`,
+		pq.Array(warehouseProductIDs),
+	); err != nil {
+		return fmt.Errorf("error to update warehouse products: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error to commit tx: %w", err)
+	}
+
 	return nil
 }
 
 func (r *Repository) SetProductsToConfirmedOrCanceled(ctx context.Context, status int, reservationID uuid.UUID) error {
-	if _, err := r.db.ExecContext(
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error to begin tx: %w", err)
+	}
+	defer tx.Rollback()
+	
+	rows, err := tx.QueryContext(
 		ctx,
-		`UPDATE reserved_products SET status = $1 WHERE reservation_id = $2`,
-		status, reservationID,
+		`UPDATE reserved_products SET status = $1 WHERE reservation_id = $2 and status = 0 RETURNING warehouse_product_id`,
+		status, reservationID)
+	if err != nil {
+		return fmt.Errorf("error to set products to confirmed: %w", err)
+	}
+
+	var warehouseProductIDs []int
+	for rows.Next() {
+		var warehouseProductID int
+		if err := rows.Scan(&warehouseProductID); err != nil {
+			return fmt.Errorf("scan error: %w", err)
+		}
+		warehouseProductIDs = append(warehouseProductIDs, warehouseProductID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("rows error: %w", err)
+	}
+
+	if _, err := tx.ExecContext(
+		ctx,
+		`UPDATE warehouse_products SET quantity = quantity + 1 WHERE id = ANY($1)`,
+		pq.Array(warehouseProductIDs),
 	); err != nil {
 		return fmt.Errorf("error to set products to confirmed: %w", err)
 	}
+	
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error to commit tx: %w", err)
+	}
+
 	return nil
 }

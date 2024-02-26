@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+//go:generate mockery --name=service --output=../../mock/service --outpkg=service_mock --filename=service_mock.go
 type service interface {
 	Products(ctx context.Context) ([]models.Product, error)
 	AvailabilityProductsByWarehouseID(ctx context.Context, warehouseID int) ([]models.AvailabilityProducts, error)
@@ -55,9 +56,7 @@ func (h *Handler) products(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(
-		map[string][]models.Product{"message": products},
-	); err != nil {
+	if err := json.NewEncoder(w).Encode(products); err != nil {
 		log.Errorf("error to encode products: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -86,9 +85,7 @@ func (h *Handler) availabilityProduct(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(
-		map[string][]models.AvailabilityProducts{"message": reservedProducts},
-	); err != nil {
+	if err := json.NewEncoder(w).Encode(reservedProducts); err != nil {
 		log.Errorf("error to encode products: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -120,7 +117,7 @@ func (h *Handler) reservationProducts(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(
-		map[string]uuid.UUID{"message": reservationID},
+		map[string]uuid.UUID{"reservation_id": reservationID},
 	); err != nil {
 		log.Errorf("error to encode products: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
