@@ -54,8 +54,9 @@ func (h *Handler) products(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(products); err != nil {
 		log.Errorf("error to encode products: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -83,8 +84,8 @@ func (h *Handler) availabilityProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(reservedProducts); err != nil {
 		log.Errorf("error to encode products: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -114,8 +115,8 @@ func (h *Handler) reservationProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(
 		map[string]uuid.UUID{"reservation_id": reservationID},
 	); err != nil {
